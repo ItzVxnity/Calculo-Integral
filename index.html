@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<!-- isaias mendoza -->
+
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sólido de Revolución · Instrumento de cálculo</title>
+<style>
+  :root{
+    --void:#0d1117;
+    --panel:#161b22;
+    --panel-2:#11151c;
+    --line:#2a3142;
+    --line-soft:#1d2330;
+    --text:#e6e8eb;
+    --text-muted:#7d8590;
+    --curve:#f0b429;
+    --curve-g:#ff8fab;
+    --solid-default:#4dd0e1;
+    --readout:#7CFFB2;
+    --danger:#ff6b6b;
+    --radius:3px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--void);color:var(--text);font-family:var(--mono);}
+  body{
+    background-image:
+      radial-gradient(ellipse at 70% 20%, rgba(77,208,225,0.05), transparent 60%),
+      radial-gradient(ellipse at 20% 80%, rgba(240,180,41,0.04), transparent 55%);
+  }
+  .app{
+    display:grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-areas: "rail view";
+    height:100vh;
+    width:100vw;
+    overflow:hidden;
+  }
+  @media (max-width: 760px){
+    .app{
+      grid-template-columns: 1fr;
+      grid-template-rows: 46vh 1fr;
+      grid-template-areas: "view" "rail";
+    }
+  }
+ 
+  /* ---------- RAIL ---------- */
+  .rail{
+    grid-area: rail;
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    overflow-y:auto;
+    padding:18px 16px 28px;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+  @media (max-width: 760px){
+    .rail{ border-right:none; border-top:1px solid var(--line); }
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--line);
+  }
+  .brand .glyph{
+    font-family:var(--serif);
+    font-size:26px;
+    color:var(--curve);
+    line-height:1;
+  }
+  .brand .name{
+    font-family:var(--serif);
+    font-size:16px;
+    letter-spacing:0.04em;
+    color:var(--text);
+  }
+  .brand .name small{
+    display:block;
+    font-family:var(--mono);
+    font-size:9.5px;
+    letter-spacing:0.18em;
+    color:var(--text-muted);
+    margin-top:2px;
+  }
+  .status{
+    margin-left:auto;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:9.5px;
+    letter-spacing:0.08em;
+    color:var(--text-muted);
+    white-space:nowrap;
+  }
+  .led{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--readout);
+    box-shadow:0 0 6px var(--readout);
+  }
+  .led.err{ background:var(--danger); box-shadow:0 0 6px var(--danger); }
+ 
+  .section{ display:flex; flex-direction:column; gap:8px; }
+  .section-label{
+    font-size:10px;
+    letter-spacing:0.16em;
+    color:var(--text-muted);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .section-label::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--line-soft);
+  }
+ 
+  .fx-row{ display:flex; align-items:center; gap:8px; }
+  .fx-prefix{ font-family:var(--serif); font-size:16px; color:var(--text-muted); font-style:italic; }
+  input[type="text"], input[type="number"]{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:13.5px;
+    padding:8px 10px;
+    border-radius:var(--radius);
+    width:100%;
+    outline:none;
+  }
+  input[type="text"]:focus, input[type="number"]:focus{
+    border-color:var(--solid-default);
+    box-shadow:0 0 0 1px rgba(77,208,225,0.25);
+  }
+  .error-line{
+    font-size:11px;
+    color:var(--danger);
+    min-height:14px;
+    line-height:1.3;
+  }
+ 
+  .presets{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text-muted);
+    font-family:var(--mono);
+    font-size:11px;
+    padding:5px 9px;
+    border-radius:20px;
+    cursor:pointer;
+    transition:border-color .15s, color .15s;
+  }
+  .chip:hover{ border-color:var(--curve); color:var(--curve); }
+ 
+  .bounds-row{ display:flex; gap:10px; }
+  .bound{ flex:1; display:flex; flex-direction:column; gap:4px; }
+  .bound label{ font-size:10.5px; color:var(--text-muted); }
+ 
+  .axis-toggle{
+    display:flex;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .axis-toggle button{
+    flex:1;
+    background:var(--panel-2);
+    border:none;
+    color:var(--text-muted);
+    font-family:var(--mono);
+    font-size:12px;
+    padding:9px 0;
+    cursor:pointer;
+    border-right:1px solid var(--line);
+  }
+  .axis-toggle button:last-child{ border-right:none; }
+  .axis-toggle button.active{
+    background:rgba(77,208,225,0.12);
+    color:var(--solid-default);
+  }
+ 
+  .slider-row{ display:flex; flex-direction:column; gap:4px; }
+  .slider-row .top{ display:flex; justify-content:space-between; font-size:10.5px; color:var(--text-muted); }
+  .slider-row .top span.val{ color:var(--text); }
+  input[type="range"]{
+    width:100%;
+    accent-color: var(--solid-default);
+    height:4px;
+    background:var(--line-soft);
+  }
+ 
+  .check-row{ display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text); }
+  .check-row input{ accent-color: var(--solid-default); }
+ 
+  .swatches{ display:flex; gap:8px; }
+  .swatch{
+    width:20px;height:20px;border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer;
+  }
+  .swatch.active{ border-color:var(--text); }
+ 
+  /* ---------- READOUT (signature) ---------- */
+  .readout{
+    margin-top:auto;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:linear-gradient(180deg, var(--panel-2), #0a0d12);
+    padding:12px 14px;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.55);
+  }
+  .readout-label{
+    font-size:9.5px;
+    letter-spacing:0.18em;
+    color:var(--text-muted);
+    margin-bottom:6px;
+  }
+  .readout-value{
+    font-family:var(--mono);
+    font-size:25px;
+    color:var(--readout);
+    text-shadow:0 0 8px rgba(124,255,178,0.45);
+    letter-spacing:0.01em;
+  }
+  .readout-value .unit{ font-size:13px; color:rgba(124,255,178,0.6); margin-left:4px; }
+  .readout-formula{
+    margin-top:6px;
+    font-size:11px;
+    color:var(--text-muted);
+    font-style:italic;
+  }
+ 
+  /* ---------- VIEWPORT ---------- */
+  .viewport-wrap{
+    grid-area:view;
+    position:relative;
+    background:
+      radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.03), transparent 65%),
+      var(--void);
+    overflow:hidden;
+  }
+  #canvas-mount{ position:absolute; inset:0; cursor:grab; }
+  #canvas-mount.dragging{ cursor:grabbing; }
+  #canvas-mount canvas{ display:block; }
+ 
+  .corner{ position:absolute; width:22px; height:22px; border-color:var(--line); opacity:0.7; }
+  .corner.tl{ top:14px; left:14px; border-top:1px solid; border-left:1px solid; }
+  .corner.tr{ top:14px; right:14px; border-top:1px solid; border-right:1px solid; }
+  .corner.bl{ bottom:14px; left:14px; border-bottom:1px solid; border-left:1px solid; }
+  .corner.br{ bottom:14px; right:14px; border-bottom:1px solid; border-right:1px solid; }
+ 
+  .hint{
+    position:absolute;
+    bottom:16px;
+    left:50%;
+    transform:translateX(-50%);
+    font-size:10px;
+    letter-spacing:0.08em;
+    color:var(--text-muted);
+    background:rgba(13,17,23,0.55);
+    padding:5px 10px;
+    border-radius:20px;
+    border:1px solid var(--line-soft);
+    pointer-events:none;
+    white-space:nowrap;
+  }
+  .legend{
+    position:absolute;
+    top:16px;
+    right:16px;
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    font-size:10px;
+    color:var(--text-muted);
+    background:rgba(13,17,23,0.5);
+    padding:8px 10px;
+    border-radius:var(--radius);
+    border:1px solid var(--line-soft);
+  }
+  .legend .row{ display:flex; align-items:center; gap:6px; }
+  .legend .dot{ width:8px; height:8px; border-radius:50%; }
+ 
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-track{ background:var(--panel-2); }
+  ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:4px; }
+
+  /* ---------- COORDINATES OVERLAY ---------- */
+  .coord-overlay {
+    position: absolute;
+    bottom: 52px;
+    right: 16px;
+    background: rgba(13, 17, 23, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-family: var(--mono);
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    z-index: 10;
+  }
+  .coord-overlay .coord-title {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .coord-overlay .coord-val {
+    font-size: 13px;
+    color: var(--text);
+  }
+  .coord-overlay .coord-val span {
+    color: var(--readout);
+    font-weight: bold;
+  }
+
+  /* ---------- SPLIT VIEW AND ANIMATION ---------- */
+  .view-split-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    height: 100%;
+    transition: grid-template-columns 0.3s ease;
+  }
+  .view-pane {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  #view-2d {
+    border-right: 1px solid var(--line-soft);
+  }
+  #canvas-2d {
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: var(--void);
+    cursor: crosshair;
+  }
+  .view-split-container.only-3d {
+    grid-template-columns: 0fr 1fr;
+  }
+  .view-split-container.only-3d #view-2d {
+    display: none;
+  }
+  .view-split-container.only-2d {
+    grid-template-columns: 1fr 0fr;
+  }
+  .view-split-container.only-2d #view-3d {
+    display: none;
+  }
+  
+  #btnPlay {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    cursor: pointer;
+    font-family: var(--mono);
+    border-radius: var(--radius);
+    padding: 6px 10px;
+    font-size: 11px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+  }
+  #btnPlay:hover {
+    border-color: var(--solid-default);
+    color: var(--solid-default);
+  }
+  #btnPlay.playing {
+    background: rgba(255, 107, 107, 0.15);
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+</style>
+</head>
+<body>
+ 
+<div class="app">
+  <div class="rail">
+    <div class="brand">
+      <div class="glyph">∫</div>
+      <div class="name">Sólido·Rev
+        <small>INSTRUMENTO DE CÁLCULO</small>
+      </div>
+      <div class="status"><span class="led" id="led"></span><span id="statusText">listo</span></div>
+    </div>
+ 
+    <div class="section">
+      <div class="section-label">funciones</div>
+      <div class="fx-row">
+        <span class="fx-prefix" style="color:var(--curve)">ƒ(x) =</span>
+        <input type="text" id="fxInput" value="sqrt(x)" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="presets" id="presets">
+        <span class="chip" data-fx="sqrt(x)">√x</span>
+        <span class="chip" data-fx="x^2/4+0.3">x²/4</span>
+        <span class="chip" data-fx="sin(x)+2">sin(x)+2</span>
+        <span class="chip" data-fx="1/(x+1)+0.2">1/(x+1)</span>
+        <span class="chip" data-fx="0.4x+1">0.4x+1</span>
+        <span class="chip" data-fx="exp(-x^2)*2">e^(-x²)</span>
+      </div>
+      <div class="fx-row" style="margin-top:8px;">
+        <span class="fx-prefix" style="color:var(--curve-g)">g(x) =</span>
+        <input type="text" id="gxInput" value="0.5" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="presets" id="presetsG">
+        <span class="chip" data-gx="0">0 (sin hueco)</span>
+        <span class="chip" data-gx="0.5">0.5</span>
+        <span class="chip" data-gx="x/2">x/2</span>
+        <span class="chip" data-gx="sin(x)">sin(x)</span>
+      </div>
+      <div class="error-line" id="errorLine"></div>
+    </div>
+ 
+    <div class="section">
+      <div class="section-label">intervalo</div>
+      <div class="bounds-row">
+        <div class="bound">
+          <label>límite inferior · a</label>
+          <input type="number" id="aInput" value="0.3" step="0.1">
+        </div>
+        <div class="bound">
+          <label>límite superior · b</label>
+          <input type="number" id="bInput" value="4" step="0.1">
+        </div>
+      </div>
+    </div>
+ 
+    <div class="section">
+      <div class="section-label">eje de rotación</div>
+      <div class="axis-toggle">
+        <button id="axisX" class="active">eje X</button>
+        <button id="axisY">eje Y</button>
+      </div>
+    </div>
+ 
+    <div class="section">
+      <div class="section-label">resolución</div>
+      <div class="slider-row">
+        <div class="top"><span>puntos de curva</span><span class="val" id="resVal">60</span></div>
+        <input type="range" id="resSlider" min="10" max="160" value="60">
+      </div>
+      <div class="slider-row">
+        <div class="top"><span>segmentos radiales</span><span class="val" id="segVal">48</span></div>
+        <input type="range" id="segSlider" min="8" max="120" value="48">
+      </div>
+    </div>
+ 
+    <div class="section">
+      <div class="section-label">apariencia</div>
+      <div class="slider-row">
+        <div class="top"><span>opacidad</span><span class="val" id="opVal">0.85</span></div>
+        <input type="range" id="opSlider" min="10" max="100" value="85">
+      </div>
+      <div class="swatches" id="swatches">
+        <div class="swatch active" data-color="#4dd0e1" style="background:#4dd0e1"></div>
+        <div class="swatch" data-color="#f0b429" style="background:#f0b429"></div>
+        <div class="swatch" data-color="#c792ea" style="background:#c792ea"></div>
+        <div class="swatch" data-color="#7CFFB2" style="background:#7CFFB2"></div>
+      </div>
+      <label class="check-row"><input type="checkbox" id="wireCheck"> malla (wireframe)</label>
+      <label class="check-row"><input type="checkbox" id="curveFCheck" checked> mostrar curva ƒ(x)</label>
+      <label class="check-row"><input type="checkbox" id="curveGCheck" checked> mostrar curva g(x)</label>
+      <label class="check-row"><input type="checkbox" id="axisCheck" checked> mostrar eje</label>
+      <label class="check-row"><input type="checkbox" id="rotCheck"> auto-rotar</label>
+    </div>
+
+    <div class="section">
+      <div class="section-label">vista y animación</div>
+      <div class="axis-toggle">
+        <button id="btnViewSplit" class="active">2D + 3D</button>
+        <button id="btnView3D">Solo 3D</button>
+        <button id="btnView2D">Solo 2D</button>
+      </div>
+      <div class="slider-row" style="margin-top:4px;">
+        <div class="top">
+          <span>ángulo de revolución</span>
+          <span class="val"><span id="sweepVal">360</span>°</span>
+        </div>
+        <div class="fx-row">
+          <button id="btnPlay">▶ Play</button>
+          <input type="range" id="sweepSlider" min="5" max="360" value="360" style="flex:1;">
+        </div>
+      </div>
+    </div>
+ 
+    <div class="readout">
+      <div class="readout-label">volumen</div>
+      <div class="readout-value" id="volValue">0.0000<span class="unit">u³</span></div>
+      <div class="readout-formula" id="volFormula">V = π ∫ |ƒ(x)² − g(x)²| dx</div>
+    </div>
+  </div>
+ 
+  <div class="viewport-wrap">
+    <div class="view-split-container">
+      <div id="view-2d" class="view-pane">
+        <canvas id="canvas-2d"></canvas>
+      </div>
+      <div id="view-3d" class="view-pane">
+        <div id="canvas-mount"></div>
+      </div>
+    </div>
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+    <div class="legend">
+      <div class="row"><span class="dot" style="background:var(--curve)"></span>curva ƒ(x)</div>
+      <div class="row"><span class="dot" style="background:var(--curve-g)"></span>curva g(x)</div>
+      <div class="row"><span class="dot" style="background:var(--text-muted)"></span>eje de giro</div>
+    </div>
+    <div id="coord-overlay" class="coord-overlay">
+      <div class="coord-title">Punto Seleccionado</div>
+      <div class="coord-val">X: <span id="coordX">0.0000</span></div>
+      <div class="coord-val">Y: <span id="coordY">0.0000</span></div>
+      <div class="coord-val">Z: <span id="coordZ">0.0000</span></div>
+    </div>
+    <div class="hint">click izq. fuera para rotar · click izq. en figura para seleccionar · click derecho para desplazar · scroll para zoom</div>
+  </div>
+</div>
+ 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============================================================
+   PARSER MATEMÁTICO — tokenizer + recursive descent + eval
+   Soporta: + - * / ^, paréntesis, multiplicación implícita,
+   funciones trig/log/exp, constantes pi/e, variable x.
+   ============================================================ */
+const FUNCS = new Set([
+  'sin','cos','tan','cot','sec','csc',
+  'asin','acos','atan','acot','asec','acsc',
+  'sinh','cosh','tanh','coth','sech','csch',
+  'sqrt','cbrt','abs','exp','ln','log','log2','log10',
+  'floor','ceil','round','pow','min','max'
+]);
+ 
+function tokenize(exprStr){
+  const tokens = [];
+  let s = exprStr.toLowerCase().replace(/\s+/g, '');
+  
+  // Reemplazar alias trigonométricos comunes en español e inversas
+  s = s.replace(/arcsen/g, 'asin')
+       .replace(/arcsin/g, 'asin')
+       .replace(/arccos/g, 'acos')
+       .replace(/arctg/g, 'atan')
+       .replace(/arctan/g, 'atan')
+       .replace(/arccotg?/g, 'acot')
+       .replace(/arcsec/g, 'asec')
+       .replace(/arccsc/g, 'acsc')
+       .replace(/sen/g, 'sin')
+       .replace(/tg/g, 'tan')
+       .replace(/ln/g, 'ln');
+  
+  let i = 0;
+  while (i < s.length){
+    const c = s[i];
+    if (/[0-9.]/.test(c)){
+      let j = i;
+      while (j < s.length && /[0-9.]/.test(s[j])) j++;
+      const raw = s.slice(i,j);
+      if (raw === '.' || raw === '') throw new Error('Número inválido');
+      tokens.push({type:'NUM', value: parseFloat(raw)});
+      i = j;
+    } else if (/[a-zA-Z]/.test(c)){
+      let j = i;
+      while (j < s.length && /[a-zA-Z0-9_]/.test(s[j])) j++;
+      tokens.push({type:'ID', value: s.slice(i,j)});
+      i = j;
+    } else if ('+-*/^(),'.includes(c)){
+      tokens.push({type:c});
+      i++;
+    } else {
+      throw new Error(`carácter no reconocido: "${c}"`);
+    }
+  }
+  return tokens;
+}
+ 
+function insertImplicitMul(tokens){
+  const out = [];
+  for (const t of tokens){
+    if (out.length){
+      const prev = out[out.length-1];
+      const needsMul =
+        (prev.type==='NUM' && (t.type==='ID' || t.type==='(')) ||
+        (prev.type===')' && (t.type==='NUM' || t.type==='ID' || t.type==='(')) ||
+        (prev.type==='ID' && !FUNCS.has(prev.value) && (t.type==='(' || t.type==='NUM' || t.type==='ID'));
+      if (needsMul) out.push({type:'*'});
+    }
+    out.push(t);
+  }
+  return out;
+}
+ 
+function parseTokens(tokens){
+  let pos = 0;
+  const peek = () => tokens[pos];
+  const next = () => tokens[pos++];
+  const expect = (type) => { const t = next(); if (!t || t.type !== type) throw new Error('expresión mal formada'); return t; };
+ 
+  function parseExpr(){
+    let node = parseTerm();
+    while (peek() && (peek().type==='+' || peek().type==='-')){
+      const op = next().type;
+      node = {type:'bin', op, left:node, right:parseTerm()};
+    }
+    return node;
+  }
+  function parseTerm(){
+    let node = parseUnary();
+    while (peek() && (peek().type==='*' || peek().type==='/')){
+      const op = next().type;
+      node = {type:'bin', op, left:node, right:parseUnary()};
+    }
+    return node;
+  }
+  function parseUnary(){
+    if (peek() && (peek().type==='+' || peek().type==='-')){
+      const op = next().type;
+      return {type:'unary', op, node:parseUnary()};
+    }
+    return parsePow();
+  }
+  function parsePow(){
+    let node = parsePrimary();
+    if (peek() && peek().type==='^'){
+      next();
+      node = {type:'bin', op:'^', left:node, right:parseUnary()};
+    }
+    return node;
+  }
+  function parsePrimary(){
+    const t = peek();
+    if (!t) throw new Error('expresión incompleta');
+    if (t.type==='NUM'){ next(); return {type:'num', value:t.value}; }
+    if (t.type==='('){
+      next();
+      const node = parseExpr();
+      expect(')');
+      return node;
+    }
+    if (t.type==='ID'){
+      next();
+      const name = t.value;
+      if (peek() && peek().type==='(' && FUNCS.has(name)){
+        next();
+        const args = [parseExpr()];
+        while (peek() && peek().type===','){ next(); args.push(parseExpr()); }
+        expect(')');
+        return {type:'call', name, args};
+      }
+      return {type:'id', name};
+    }
+    throw new Error('token inesperado');
+  }
+ 
+  const ast = parseExpr();
+  if (pos !== tokens.length) throw new Error('expresión mal formada');
+  return ast;
+}
+ 
+function evalNode(node, x){
+  switch(node.type){
+    case 'num': return node.value;
+    case 'id':
+      if (node.name === 'x') return x;
+      if (node.name === 'pi') return Math.PI;
+      if (node.name === 'e') return Math.E;
+      throw new Error(`variable desconocida: ${node.name}`);
+    case 'unary': {
+      const v = evalNode(node.node, x);
+      return node.op === '-' ? -v : v;
+    }
+    case 'bin': {
+      const l = evalNode(node.left, x), r = evalNode(node.right, x);
+      if (node.op === '+') return l+r;
+      if (node.op === '-') return l-r;
+      if (node.op === '*') return l*r;
+      if (node.op === '/') return l/r;
+      if (node.op === '^') return Math.pow(l,r);
+      throw new Error('operador desconocido');
+    }
+    case 'call': {
+      const a = node.args.map(n => evalNode(n, x));
+      switch(node.name){
+        case 'sin': return Math.sin(a[0]);
+        case 'cos': return Math.cos(a[0]);
+        case 'tan': return Math.tan(a[0]);
+        case 'cot': return 1 / Math.tan(a[0]);
+        case 'sec': return 1 / Math.cos(a[0]);
+        case 'csc': return 1 / Math.sin(a[0]);
+        case 'asin': return Math.asin(a[0]);
+        case 'acos': return Math.acos(a[0]);
+        case 'atan': return Math.atan(a[0]);
+        case 'acot': return Math.PI / 2 - Math.atan(a[0]);
+        case 'asec': return Math.acos(1 / a[0]);
+        case 'acsc': return Math.asin(1 / a[0]);
+        case 'sinh': return Math.sinh(a[0]);
+        case 'cosh': return Math.cosh(a[0]);
+        case 'tanh': return Math.tanh(a[0]);
+        case 'coth': return 1 / Math.tanh(a[0]);
+        case 'sech': return 1 / Math.cosh(a[0]);
+        case 'csch': return 1 / Math.sinh(a[0]);
+        case 'sqrt': return Math.sqrt(a[0]);
+        case 'cbrt': return Math.cbrt(a[0]);
+        case 'abs': return Math.abs(a[0]);
+        case 'exp': return Math.exp(a[0]);
+        case 'ln': return Math.log(a[0]);
+        case 'log': return Math.log10(a[0]);
+        case 'log2': return Math.log2(a[0]);
+        case 'log10': return Math.log10(a[0]);
+        case 'floor': return Math.floor(a[0]);
+        case 'ceil': return Math.ceil(a[0]);
+        case 'round': return Math.round(a[0]);
+        case 'pow': return Math.pow(a[0], a[1]);
+        case 'min': return Math.min(...a);
+        case 'max': return Math.max(...a);
+        default: throw new Error(`función desconocida: ${node.name}`);
+      }
+    }
+  }
+  throw new Error('nodo inválido');
+}
+ 
+function compileFx(exprStr){
+  if (!exprStr || !exprStr.trim()) throw new Error('escribe una función');
+  const tokens = insertImplicitMul(tokenize(exprStr));
+  const ast = parseTokens(tokens);
+  return (x) => evalNode(ast, x);
+}
+ 
+function simpson(f, a, b, n){
+  if (n % 2 === 1) n++;
+  if (n < 2) n = 2;
+  const h = (b-a)/n;
+  let sum = f(a) + f(b);
+  for (let i=1; i<n; i++){
+    sum += f(a + i*h) * (i % 2 === 0 ? 2 : 4);
+  }
+  return sum * h / 3;
+}
+ 
+/* ============================================================
+   ESCENA THREE.JS
+   ============================================================ */
+const mount = document.getElementById('canvas-mount');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+mount.appendChild(renderer.domElement);
+ 
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const dLight1 = new THREE.DirectionalLight(0xffffff, 0.9);
+dLight1.position.set(5, 8, 6);
+scene.add(dLight1);
+const dLight2 = new THREE.DirectionalLight(0x4dd0e1, 0.3);
+dLight2.position.set(-6, -3, -4);
+scene.add(dLight2);
+ 
+const grid = new THREE.GridHelper(20, 20, 0x1d2330, 0x161b22);
+grid.position.y = -4;
+scene.add(grid);
+ 
+let solidMesh = null;
+let curveLineF = null;
+let curveLineG = null;
+let axisLine = null;
+const group = new THREE.Group();
+scene.add(group);
+ 
+/* ---- cámara orbital manual (sin dependencias externas) ---- */
+let camTheta = Math.PI/4, camPhi = 1.15, camRadius = 13;
+const camTarget = new THREE.Vector3(0,0,0);
+function updateCamera(){
+  const phi = Math.max(0.12, Math.min(Math.PI-0.12, camPhi));
+  camera.position.set(
+    camTarget.x + camRadius*Math.sin(phi)*Math.sin(camTheta),
+    camTarget.y + camRadius*Math.cos(phi),
+    camTarget.z + camRadius*Math.sin(phi)*Math.cos(camTheta)
+  );
+  camera.lookAt(camTarget);
+}
+updateCamera();
+ 
+let startX = 0, startY = 0;
+let pendingSelection = null;
+let draggingRotation = false;
+let draggingPan = false;
+let lastX = 0, lastY = 0;
+
+mount.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ---- Raycaster & selección de punto ---- */
+const raycaster = new THREE.Raycaster();
+raycaster.params.Line.threshold = 0.15;
+const mouse = new THREE.Vector2();
+let selectionMarker = null;
+
+function showSelectionMarker(position) {
+  if (selectionMarker) {
+    scene.remove(selectionMarker);
+  }
+  
+  const markerGroup = new THREE.Group();
+  
+  const sphereGeo = new THREE.SphereGeometry(0.12, 16, 16);
+  const sphereMat = new THREE.MeshBasicMaterial({ color: 0xff3366 });
+  const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+  markerGroup.add(sphere);
+  
+  const ringGeo = new THREE.RingGeometry(0.24, 0.28, 32);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xff3366, side: THREE.DoubleSide });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.onBeforeRender = function(renderer, scene, camera) {
+    this.lookAt(camera.position);
+  };
+  markerGroup.add(ring);
+  
+  selectionMarker = markerGroup;
+  selectionMarker.position.copy(position);
+  scene.add(selectionMarker);
+}
+
+mount.addEventListener('mousedown', e => {
+  startX = e.clientX;
+  startY = e.clientY;
+  
+  if (e.button === 0) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(group.children, true);
+    
+    if (intersects.length > 0) {
+      pendingSelection = intersects[0].point;
+    } else {
+      pendingSelection = null;
+      draggingRotation = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      mount.classList.add('dragging');
+    }
+  } else if (e.button === 2) {
+    draggingPan = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    mount.classList.add('dragging');
+  }
+});
+
+window.addEventListener('mouseup', e => {
+  const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
+  
+  if (e.button === 0) {
+    if (draggingRotation) {
+      draggingRotation = false;
+      mount.classList.remove('dragging');
+    }
+    
+    if (dist < 5) {
+      if (pendingSelection) {
+        showSelectionMarker(pendingSelection);
+        updateSelectedPoint2D(pendingSelection);
+        document.getElementById('coordX').textContent = pendingSelection.x.toFixed(4);
+        document.getElementById('coordY').textContent = pendingSelection.y.toFixed(4);
+        document.getElementById('coordZ').textContent = pendingSelection.z.toFixed(4);
+        document.getElementById('coord-overlay').style.display = 'flex';
+        draw2D();
+      } else {
+        if (selectionMarker) {
+          scene.remove(selectionMarker);
+          selectionMarker = null;
+        }
+        selectedPoint2D = null;
+        document.getElementById('coord-overlay').style.display = 'none';
+        draw2D();
+      }
+    }
+    pendingSelection = null;
+  } else if (e.button === 2) {
+    if (draggingPan) {
+      draggingPan = false;
+      mount.classList.remove('dragging');
+    }
+  }
+});
+
+window.addEventListener('mousemove', e => {
+  if (draggingRotation) {
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    camTheta -= dx * 0.006;
+    camPhi -= dy * 0.006;
+    updateCamera();
+  } else if (draggingPan) {
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    const panSpeed = 0.0008 * camRadius;
+    const localX = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+    const localY = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+    camTarget.addScaledVector(localX, -dx * panSpeed);
+    camTarget.addScaledVector(localY, dy * panSpeed);
+    updateCamera();
+  }
+});
+mount.addEventListener('wheel', e => {
+  e.preventDefault();
+  camRadius *= (1 + e.deltaY*0.001);
+  camRadius = Math.max(3, Math.min(45, camRadius));
+  updateCamera();
+}, { passive:false });
+ 
+let touchLastX=0, touchLastY=0, touchLastDist=0;
+mount.addEventListener('touchstart', e => {
+  if (e.touches.length===1){ touchLastX=e.touches[0].clientX; touchLastY=e.touches[0].clientY; }
+  else if (e.touches.length===2){ touchLastDist = touchDist(e.touches); }
+}, {passive:true});
+mount.addEventListener('touchmove', e => {
+  if (e.touches.length===1){
+    const dx = e.touches[0].clientX - touchLastX;
+    const dy = e.touches[0].clientY - touchLastY;
+    touchLastX = e.touches[0].clientX; touchLastY = e.touches[0].clientY;
+    camTheta -= dx*0.007; camPhi -= dy*0.007;
+    updateCamera();
+  } else if (e.touches.length===2){
+    const d = touchDist(e.touches);
+    camRadius *= (1 + (touchLastDist-d)*0.003);
+    camRadius = Math.max(3, Math.min(45, camRadius));
+    touchLastDist = d;
+    updateCamera();
+  }
+  e.preventDefault();
+}, {passive:false});
+function touchDist(t){ return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
+ 
+function resize(){
+  const w = mount.clientWidth, h = mount.clientHeight;
+  camera.aspect = w/h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+new ResizeObserver(resize).observe(mount);
+resize();
+ 
+/* ============================================================
+   CONTROLES UI
+   ============================================================ */
+const el = id => document.getElementById(id);
+const fxInput = el('fxInput'), gxInput = el('gxInput'), aInput = el('aInput'), bInput = el('bInput');
+const errorLine = el('errorLine'), led = el('led'), statusText = el('statusText');
+const resSlider = el('resSlider'), segSlider = el('segSlider'), opSlider = el('opSlider');
+const resVal = el('resVal'), segVal = el('segVal'), opVal = el('opVal');
+const wireCheck = el('wireCheck'), curveFCheck = el('curveFCheck'), curveGCheck = el('curveGCheck'), axisCheck = el('axisCheck'), rotCheck = el('rotCheck');
+const volValue = el('volValue'), volFormula = el('volFormula');
+const axisXBtn = el('axisX'), axisYBtn = el('axisY');
+ 
+let axisMode = 'x';
+let solidColor = '#4dd0e1';
+ 
+axisXBtn.addEventListener('click', () => { axisMode='x'; axisXBtn.classList.add('active'); axisYBtn.classList.remove('active'); rebuild(); });
+axisYBtn.addEventListener('click', () => { axisMode='y'; axisYBtn.classList.add('active'); axisXBtn.classList.remove('active'); rebuild(); });
+ 
+document.getElementById('presets').addEventListener('click', e => {
+  if (e.target.dataset.fx){ fxInput.value = e.target.dataset.fx; rebuild(); }
+});
+document.getElementById('presetsG').addEventListener('click', e => {
+  if (e.target.dataset.gx !== undefined){ gxInput.value = e.target.dataset.gx; rebuild(); }
+});
+document.getElementById('swatches').addEventListener('click', e => {
+  if (e.target.dataset.color){
+    solidColor = e.target.dataset.color;
+    [...document.querySelectorAll('.swatch')].forEach(s => s.classList.remove('active'));
+    e.target.classList.add('active');
+    rebuild();
+  }
+});
+ 
+[fxInput, gxInput, aInput, bInput].forEach(i => i.addEventListener('input', rebuild));
+resSlider.addEventListener('input', () => { resVal.textContent = resSlider.value; rebuild(); });
+segSlider.addEventListener('input', () => { segVal.textContent = segSlider.value; rebuild(); });
+opSlider.addEventListener('input', () => { opVal.textContent = (opSlider.value/100).toFixed(2); rebuild(); });
+[wireCheck, curveFCheck, curveGCheck, axisCheck].forEach(c => c.addEventListener('change', rebuild));
+ 
+function setStatus(ok, msg){
+  led.classList.toggle('err', !ok);
+  statusText.textContent = msg;
+  errorLine.textContent = ok ? '' : msg;
+}
+ 
+function clearGroup(){
+  while (group.children.length) group.remove(group.children[0]);
+  if (selectionMarker) {
+    scene.remove(selectionMarker);
+    selectionMarker = null;
+  }
+  selectedPoint2D = null;
+  const overlay = document.getElementById('coord-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+ 
+function rebuild(){
+  const a = parseFloat(aInput.value), b = parseFloat(bInput.value);
+ 
+  if (isNaN(a) || isNaN(b)){ setStatus(false, 'límites inválidos'); return; }
+  if (b <= a){ setStatus(false, 'b debe ser mayor que a'); return; }
+ 
+  let f, g;
+  try {
+    f = compileFx(fxInput.value);
+    const probe = f((a+b)/2);
+    if (typeof probe !== 'number' || isNaN(probe)) throw new Error('ƒ(x) no es numérica en el intervalo');
+  } catch(err){ setStatus(false, `ƒ(x): ${err.message}`); return; }
+  try {
+    g = compileFx(gxInput.value.trim() === '' ? '0' : gxInput.value);
+    const probe = g((a+b)/2);
+    if (typeof probe !== 'number' || isNaN(probe)) throw new Error('g(x) no es numérica en el intervalo');
+  } catch(err){ setStatus(false, `g(x): ${err.message}`); return; }
+ 
+  const nCurve = parseInt(resSlider.value, 10);
+  const nRadial = parseInt(segSlider.value, 10);
+  const opacity = opSlider.value/100;
+  const clamp = r => Math.max(Math.abs(r), 0.0008);
+ 
+  const ts = [], fVal = [], gVal = [];
+  for (let i=0; i<=nCurve; i++){
+    const t = a + (b-a)*i/nCurve;
+    let fy, gy;
+    try { fy = f(t); gy = g(t); }
+    catch(err){ setStatus(false, `error en x=${t.toFixed(2)}: ${err.message}`); return; }
+    if (typeof fy !== 'number' || !isFinite(fy)){ setStatus(false, `ƒ(x) no está definida en x=${t.toFixed(3)}`); return; }
+    if (typeof gy !== 'number' || !isFinite(gy)){ setStatus(false, `g(x) no está definida en x=${t.toFixed(3)}`); return; }
+    ts.push(t); fVal.push(fy); gVal.push(gy);
+  }
+  const n = nCurve;
+ 
+  clearGroup();
+ 
+  const pts = [];
+  if (axisMode === 'x'){
+    const outer = i => clamp(Math.max(Math.abs(fVal[i]), Math.abs(gVal[i])));
+    const inner = i => clamp(Math.min(Math.abs(fVal[i]), Math.abs(gVal[i])));
+    pts.push(new THREE.Vector2(inner(0), ts[0]));
+    pts.push(new THREE.Vector2(outer(0), ts[0]));
+    for (let i=1; i<=n; i++) pts.push(new THREE.Vector2(outer(i), ts[i]));
+    pts.push(new THREE.Vector2(inner(n), ts[n]));
+    for (let i=n-1; i>=0; i--) pts.push(new THREE.Vector2(inner(i), ts[i]));
+  } else {
+    const top = i => Math.max(fVal[i], gVal[i]);
+    const bot = i => Math.min(fVal[i], gVal[i]);
+    const rad = i => clamp(ts[i]);
+    pts.push(new THREE.Vector2(rad(0), bot(0)));
+    pts.push(new THREE.Vector2(rad(0), top(0)));
+    for (let i=1; i<=n; i++) pts.push(new THREE.Vector2(rad(i), top(i)));
+    pts.push(new THREE.Vector2(rad(n), bot(n)));
+    for (let i=n-1; i>=0; i--) pts.push(new THREE.Vector2(rad(i), bot(i)));
+  }
+ 
+  const sweepAngle = parseInt(document.getElementById('sweepSlider').value) * Math.PI / 180;
+  const geometry = new THREE.LatheGeometry(pts, nRadial, 0, sweepAngle);
+  const material = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(solidColor),
+    metalness: 0.15,
+    roughness: 0.45,
+    side: THREE.DoubleSide,
+    transparent: opacity < 1,
+    opacity: opacity,
+    wireframe: wireCheck.checked
+  });
+  solidMesh = new THREE.Mesh(geometry, material);
+  if (axisMode === 'x') solidMesh.rotation.z = -Math.PI/2;
+  group.add(solidMesh);
+ 
+  if (curveFCheck.checked){
+    const fpts = ts.map((t,i) => new THREE.Vector3(t, fVal[i], 0));
+    const geo = new THREE.BufferGeometry().setFromPoints(fpts);
+    curveLineF = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xf0b429, linewidth:2 }));
+    group.add(curveLineF);
+  }
+  if (curveGCheck.checked){
+    const gpts = ts.map((t,i) => new THREE.Vector3(t, gVal[i], 0));
+    const geo = new THREE.BufferGeometry().setFromPoints(gpts);
+    curveLineG = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xff8fab, linewidth:2 }));
+    group.add(curveLineG);
+  }
+ 
+  if (axisCheck.checked){
+    const margin = (b-a)*0.15 + 0.3;
+    let p1, p2;
+    if (axisMode === 'x'){
+      p1 = new THREE.Vector3(a-margin, 0, 0);
+      p2 = new THREE.Vector3(b+margin, 0, 0);
+    } else {
+      const allY = fVal.concat(gVal, [0]);
+      const ymin = Math.min(...allY), ymax = Math.max(...allY);
+      p1 = new THREE.Vector3(0, ymin-margin, 0);
+      p2 = new THREE.Vector3(0, ymax+margin, 0);
+    }
+    const axisGeo = new THREE.BufferGeometry().setFromPoints([p1,p2]);
+    axisLine = new THREE.Line(axisGeo, new THREE.LineDashedMaterial({ color:0x7d8590, dashSize:0.18, gapSize:0.12 }));
+    axisLine.computeLineDistances();
+    group.add(axisLine);
+  }
+ 
+  const nInt = 200;
+  let volume, formula;
+  if (axisMode === 'x'){
+    volume = Math.PI * simpson(x => Math.abs(Math.pow(f(x),2) - Math.pow(g(x),2)), a, b, nInt);
+    formula = 'V = π ∫ |ƒ(x)² − g(x)²| dx   (arandela)';
+  } else {
+    volume = 2*Math.PI * simpson(x => x * Math.abs(f(x) - g(x)), a, b, nInt);
+    formula = 'V = 2π ∫ x·|ƒ(x) − g(x)| dx   (capas, área entre curvas)';
+  }
+  volValue.innerHTML = `${Math.abs(volume).toFixed(4)}<span class="unit">u³</span>`;
+  volFormula.textContent = formula;
+ 
+  setStatus(true, 'listo');
+  draw2D();
+}
+
+/* ---------- 2D PLOT & ANIMATION LOGIC ---------- */
+const canvas2d = document.getElementById('canvas-2d');
+const ctx = canvas2d.getContext('2d');
+let selectedPoint2D = null;
+let plotXMin = 0, plotXMax = 4, plotYMin = -1, plotYMax = 3;
+
+function resize2D() {
+  const rect = canvas2d.parentElement.getBoundingClientRect();
+  canvas2d.width = rect.width;
+  canvas2d.height = rect.height;
+  draw2D();
+}
+new ResizeObserver(resize2D).observe(canvas2d.parentElement);
+
+function updateSelectedPoint2D(p3d) {
+  if (!p3d) {
+    selectedPoint2D = null;
+    return;
+  }
+  const a = parseFloat(aInput.value), b = parseFloat(bInput.value);
+  if (axisMode === 'x') {
+    const r = Math.sqrt(p3d.y * p3d.y + p3d.z * p3d.z);
+    selectedPoint2D = { x: p3d.x, y: r };
+  } else {
+    const r = Math.sqrt(p3d.x * p3d.x + p3d.z * p3d.z);
+    selectedPoint2D = { x: r, y: p3d.y };
+  }
+}
+
+function draw2D() {
+  const width = canvas2d.width;
+  const height = canvas2d.height;
+  if (width === 0 || height === 0) return;
+  
+  ctx.clearRect(0, 0, width, height);
+  
+  const a = parseFloat(aInput.value);
+  const b = parseFloat(bInput.value);
+  if (isNaN(a) || isNaN(b) || b <= a) return;
+  
+  let f, g;
+  try {
+    f = compileFx(fxInput.value);
+    g = compileFx(gxInput.value.trim() === '' ? '0' : gxInput.value);
+  } catch (err) {
+    return;
+  }
+  
+  const steps = 100;
+  const xValues = [];
+  const fValues = [];
+  const gValues = [];
+  
+  for (let i = 0; i <= steps; i++) {
+    const t = a + (b - a) * i / steps;
+    xValues.push(t);
+    try {
+      fValues.push(f(t));
+      gValues.push(g(t));
+    } catch(e) {
+      fValues.push(0);
+      gValues.push(0);
+    }
+  }
+  
+  const allY = fValues.concat(gValues, [0]);
+  const minY = Math.min(...allY);
+  const maxY = Math.max(...allY);
+  
+  const xMargin = (b - a) * 0.15 || 0.5;
+  const yMargin = (maxY - minY) * 0.15 || 0.5;
+  
+  plotXMin = a - xMargin;
+  plotXMax = b + xMargin;
+  plotYMin = minY - yMargin;
+  plotYMax = maxY + yMargin;
+  
+  const screenMargin = 40;
+  
+  function toXPixel(xVal) {
+    return screenMargin + (xVal - plotXMin) / (plotXMax - plotXMin) * (width - 2 * screenMargin);
+  }
+  function toYPixel(yVal) {
+    return height - (screenMargin + (yVal - plotYMin) / (plotYMax - plotYMin) * (height - 2 * screenMargin));
+  }
+  
+  ctx.strokeStyle = '#1d2330';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#7d8590';
+  ctx.font = '9px ui-monospace, Consolas, monospace';
+  
+  const xStep = (plotXMax - plotXMin) / 10;
+  for (let i = 0; i <= 10; i++) {
+    const val = plotXMin + xStep * i;
+    const px = toXPixel(val);
+    ctx.beginPath();
+    ctx.moveTo(px, 0);
+    ctx.lineTo(px, height);
+    ctx.stroke();
+    ctx.fillText(val.toFixed(1), px - 10, height - 12);
+  }
+  
+  const yStep = (plotYMax - plotYMin) / 8;
+  for (let i = 0; i <= 8; i++) {
+    const val = plotYMin + yStep * i;
+    const py = toYPixel(val);
+    ctx.beginPath();
+    ctx.moveTo(0, py);
+    ctx.lineTo(width, py);
+    ctx.stroke();
+    ctx.fillText(val.toFixed(1), 8, py + 3);
+  }
+  
+  ctx.fillStyle = 'rgba(77, 208, 225, 0.12)';
+  ctx.beginPath();
+  ctx.moveTo(toXPixel(xValues[0]), toYPixel(gValues[0]));
+  for (let i = 1; i <= steps; i++) {
+    ctx.lineTo(toXPixel(xValues[i]), toYPixel(gValues[i]));
+  }
+  for (let i = steps; i >= 0; i--) {
+    ctx.lineTo(toXPixel(xValues[i]), toYPixel(fValues[i]));
+  }
+  ctx.closePath();
+  ctx.fill();
+  
+  ctx.strokeStyle = '#f0b429';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(toXPixel(xValues[0]), toYPixel(fValues[0]));
+  for (let i = 1; i <= steps; i++) {
+    ctx.lineTo(toXPixel(xValues[i]), toYPixel(fValues[i]));
+  }
+  ctx.stroke();
+  
+  ctx.strokeStyle = '#ff8fab';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(toXPixel(xValues[0]), toYPixel(gValues[0]));
+  for (let i = 1; i <= steps; i++) {
+    ctx.lineTo(toXPixel(xValues[i]), toYPixel(gValues[i]));
+  }
+  ctx.stroke();
+  
+  ctx.strokeStyle = '#7d8590';
+  ctx.lineWidth = 1.8;
+  ctx.setLineDash([6, 4]);
+  if (axisMode === 'x') {
+    const y0 = toYPixel(0);
+    ctx.beginPath();
+    ctx.moveTo(toXPixel(plotXMin), y0);
+    ctx.lineTo(toXPixel(plotXMax), y0);
+    ctx.stroke();
+  } else {
+    const x0 = toXPixel(0);
+    ctx.beginPath();
+    ctx.moveTo(x0, toYPixel(plotYMin));
+    ctx.lineTo(x0, toYPixel(plotYMax));
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  
+  if (selectedPoint2D) {
+    const px = toXPixel(selectedPoint2D.x);
+    const py = toYPixel(selectedPoint2D.y);
+    
+    ctx.strokeStyle = '#ff3366';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(px, py, 7, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+    ctx.fillStyle = '#ff3366';
+    ctx.beginPath();
+    ctx.arc(px, py, 3.5, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    ctx.fillStyle = '#e6e8eb';
+    ctx.font = 'bold 10px ui-monospace, Consolas, monospace';
+    ctx.fillText(`P(${selectedPoint2D.x.toFixed(2)}, ${selectedPoint2D.y.toFixed(2)})`, px + 10, py - 4);
+  }
+}
+
+function toXMath(px) {
+  const width = canvas2d.width;
+  return plotXMin + (px - 40) / (width - 80) * (plotXMax - plotXMin);
+}
+function toYMath(py) {
+  const height = canvas2d.height;
+  return plotYMin + (height - py - 40) / (height - 80) * (plotYMax - plotYMin);
+}
+
+canvas2d.addEventListener('click', e => {
+  const rect = canvas2d.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+  const mx = toXMath(px);
+  const my = toYMath(py);
+  
+  const a = parseFloat(aInput.value);
+  const b = parseFloat(bInput.value);
+  if (isNaN(a) || isNaN(b) || b <= a) return;
+  if (mx < a || mx > b) return;
+  
+  let f, g;
+  try {
+    f = compileFx(fxInput.value);
+    g = compileFx(gxInput.value.trim() === '' ? '0' : gxInput.value);
+  } catch(err) {
+    return;
+  }
+  
+  try {
+    const fVal = f(mx);
+    const gVal = g(mx);
+    const distF = Math.abs(my - fVal);
+    const distG = Math.abs(my - gVal);
+    
+    let selectedY = fVal;
+    if (distG < distF) {
+      selectedY = gVal;
+    }
+    
+    selectedPoint2D = { x: mx, y: selectedY };
+    
+    const p3d = new THREE.Vector3(mx, selectedY, 0);
+    showSelectionMarker(p3d);
+    
+    document.getElementById('coordX').textContent = p3d.x.toFixed(4);
+    document.getElementById('coordY').textContent = p3d.y.toFixed(4);
+    document.getElementById('coordZ').textContent = p3d.z.toFixed(4);
+    document.getElementById('coord-overlay').style.display = 'flex';
+    
+    draw2D();
+  } catch(err) {}
+});
+
+const btnViewSplit = el('btnViewSplit');
+const btnView3D = el('btnView3D');
+const btnView2D = el('btnView2D');
+const viewContainer = document.querySelector('.view-split-container');
+
+btnViewSplit.addEventListener('click', () => setViewMode('split'));
+btnView3D.addEventListener('click', () => setViewMode('3d'));
+btnView2D.addEventListener('click', () => setViewMode('2d'));
+
+function setViewMode(mode) {
+  btnViewSplit.classList.remove('active');
+  btnView3D.classList.remove('active');
+  btnView2D.classList.remove('active');
+  
+  viewContainer.classList.remove('only-3d', 'only-2d');
+  
+  if (mode === 'split') {
+    btnViewSplit.classList.add('active');
+  } else if (mode === '3d') {
+    btnView3D.classList.add('active');
+    viewContainer.classList.add('only-3d');
+  } else if (mode === '2d') {
+    btnView2D.classList.add('active');
+    viewContainer.classList.add('only-2d');
+  }
+  
+  resize();
+  resize2D();
+}
+
+let animId = null;
+const btnPlay = el('btnPlay');
+const sweepSlider = el('sweepSlider');
+const sweepVal = el('sweepVal');
+
+btnPlay.addEventListener('click', () => {
+  if (animId) stopAnimation();
+  else startAnimation();
+});
+
+function startAnimation() {
+  btnPlay.textContent = '⏸ Pause';
+  btnPlay.classList.add('playing');
+  if (parseInt(sweepSlider.value) >= 360) {
+    sweepSlider.value = 5;
+  }
+  animateSweep();
+}
+
+function stopAnimation() {
+  btnPlay.textContent = '▶ Play';
+  btnPlay.classList.remove('playing');
+  if (animId) {
+    cancelAnimationFrame(animId);
+    animId = null;
+  }
+}
+
+function animateSweep() {
+  let val = parseInt(sweepSlider.value);
+  val += 4;
+  if (val >= 360) {
+    val = 360;
+    sweepSlider.value = val;
+    sweepVal.textContent = val;
+    rebuild();
+    stopAnimation();
+    return;
+  }
+  sweepSlider.value = val;
+  sweepVal.textContent = val;
+  rebuild();
+  animId = requestAnimationFrame(animateSweep);
+}
+
+sweepSlider.addEventListener('input', () => {
+  stopAnimation();
+  sweepVal.textContent = sweepSlider.value;
+  rebuild();
+});
+
+function animate(){
+  requestAnimationFrame(animate);
+  if (rotCheck.checked){ camTheta += 0.004; updateCamera(); }
+  renderer.render(scene, camera);
+}
+rebuild();
+animate();
+</script>
+</body>
+</html>
